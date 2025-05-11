@@ -1,0 +1,35 @@
+print("Bonus button!")
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TeleportGui"
+screenGui.Parent = PlayerGui
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 244,0, 74)
+button.Position = UDim2.new(0.014, 0,0.816, 0)
+button.BackgroundColor3 = Color3.fromRGB(34,34,34)
+button.TextColor3 = Color3.new(1,1,1)
+button.Font = Enum.Font.Nunito
+button.TextSize = 50
+button.Text = "Gear shop"
+button.Parent = screenGui
+
+local UiCorner = Instance.new("UICorner", button)
+UiCorner.CornerRadius = UDim.new(0, 8)
+
+local UiStroke = Instance.new("UIStroke", button)
+UiStroke.Color = Color3.fromRGB(255,255,255)
+UiStroke.Thickness = 1.75
+UiStroke.LineJoinMode = Enum.LineJoinMode.Round
+UiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+button.MouseButton1Click:Connect(function()
+  local character = LocalPlayer.Character
+  if character and character:FindFirstChild("HumanoidRootPart") then
+    character.HumanoidRootPart.CFrame = CFrame.new(-263, 2.899050712585449, -20)
+  end
+end)
