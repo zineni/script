@@ -1,0 +1,233 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local TweenService = game:GetService("TweenService")
+
+local function createStyledButton(name, position, parent)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = UDim2.new(0, 244, 0, 74)
+    button.Position = position
+    button.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.Font = Enum.Font.Nunito
+    button.TextSize = 50
+    button.Text = name
+    button.Parent = parent
+
+    local UiCorner = Instance.new("UICorner", button)
+    UiCorner.CornerRadius = UDim.new(0, 8)
+
+    local UiStroke = Instance.new("UIStroke", button)
+    UiStroke.Color = Color3.fromRGB(255, 255, 255)
+    UiStroke.Thickness = 1.75
+    UiStroke.LineJoinMode = Enum.LineJoinMode.Round
+    UiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    -- Анимация при наведении (оптимизирована, чтобы не создавать много твинов)
+    local tweenInfo = TweenInfo.new(0.2)
+    local tweenEnter = TweenService:Create(button, tweenInfo, {BackgroundColor3 = Color3.fromRGB(50, 50, 50)})
+    local tweenLeave = TweenService:Create(button, tweenInfo, {BackgroundColor3 = Color3.fromRGB(34, 34, 34)})
+
+    button.MouseEnter:Connect(function()
+        tweenLeave:Cancel()
+        tweenEnter:Play()
+    end)
+
+    button.MouseLeave:Connect(function()
+        tweenEnter:Cancel()
+        tweenLeave:Play()
+    end)
+
+    return button
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TeleportGui"
+screenGui.Parent = PlayerGui
+screenGui.ResetOnSpawn = false
+
+local gearShopBtn = createStyledButton("Gear shop", UDim2.new(0.014, 0, 0.816, 0), screenGui)
+local eventStandBtn = createStyledButton("Event stand", UDim2.new(0.014, 0, 0.69, 0), screenGui)
+local gardensBtn = createStyledButton("Gardens", UDim2.new(0.014, 0, 0.564, 0), screenGui)
+
+local function teleportToPosition(pos)
+    local character = LocalPlayer.Character
+    if character then
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = CFrame.new(pos)
+        end
+    end
+end
+
+gearShopBtn.MouseButton1Click:Connect(function()
+    teleportToPosition(Vector3.new(-263, 2.899, -20))
+end)
+
+eventStandBtn.MouseButton1Click:Connect(function()
+    teleportToPosition(Vector3.new(-99.9, 1, -11.85))
+end)
+
+local function findPlayerByName(name)
+    if not name or type(name) ~= "string" then return nil end
+    name = name:lower():gsub("'s garden$", ""):gsub("^%s+", ""):gsub("%s+$", "")
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name:lower():find(name, 1, true) then
+            return player
+        end
+    end
+    return nil
+end
+
+local function findGardenSigns()
+    local gardenOwners = {}
+    local farm = workspace:FindFirstChild("Farm")
+    if not farm then
+        warn("Farm not found in workspace")
+        return gardenOwners
+    end
+
+    -- Кешируем все Sign с Core_Part и SurfaceGui
+    for _, sign in ipairs(farm:GetDescendants()) do
+        if sign.Name == "Sign" then
+            local corePart = sign:FindFirstChild("Core_Part")
+            if corePart then
+                local surfaceGui = corePart:FindFirstChildOfClass("SurfaceGui")
+                if surfaceGui then
+                    local textLabel = surfaceGui:FindFirstChildOfClass("TextLabel")
+                    if textLabel and textLabel.Text ~= "" then
+                        local text = textLabel.Text
+                        local ownerName = text:match("^(.+)'s Garden$") or 
+                                          text:match("^(.+)'s garden$") or
+                                          text:match("^Garden of (.+)$") or
+                                          text:match("^(.+) Garden$") or
+                                          text
+                        if ownerName then
+                            ownerName = ownerName:match("^%s*(.-)%s*$") -- trim spaces
+                            local player = findPlayerByName(ownerName)
+                            table.insert(gardenOwners, {
+                                player = player,
+                                signPart = corePart,
+                                originalText = text,
+                                displayName = player and (player.Name .. "'s Garden") or text
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return gardenOwners
+end
+
+local gardensUI -- кешируем UI, чтобы не пересоздавать
+
+local function createGardensUI()
+    if gardensUI and gardensUI.Parent then
+        gardensUI:Destroy()
+    end
+
+    local gardenOwners = findGardenSigns()
+    gardensUI = Instance.new("ScreenGui")
+    gardensUI.Name = "GardensUI"
+    gardensUI.Parent = PlayerGui
+    gardensUI.ResetOnSpawn = false
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 350, 0, 500)
+    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -250)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
+    mainFrame.Parent = gardensUI
+
+    local UiCorner = Instance.new("UICorner", mainFrame)
+    UiCorner.CornerRadius = UDim.new(0, 8)
+
+    local UiStroke = Instance.new("UIStroke", mainFrame)
+    UiStroke.Color = Color3.fromRGB(255, 255, 255)
+    UiStroke.Thickness = 1.75
+
+    local title = Instance.new("TextLabel")
+    title.Text = "Gardens ("..#gardenOwners..")"
+    title.Size = UDim2.new(1, 0, 0, 60)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.Font = Enum.Font.Nunito
+    title.TextSize = 24
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Parent = mainFrame
+
+    local closeBtn = createStyledButton("X", UDim2.new(1, -60, 0, 10), mainFrame)
+    closeBtn.Size = UDim2.new(0, 50, 0, 50)
+    closeBtn.TextSize = 30
+    closeBtn.MouseButton1Click:Connect(function()
+        if gardensUI then
+            gardensUI:Destroy()
+            gardensUI = nil
+        end
+    end)
+
+    if #gardenOwners == 0 then
+        local noGardensLabel = Instance.new("TextLabel")
+        noGardensLabel.Text = "No gardens found!"
+        noGardensLabel.Size = UDim2.new(1, -20, 0, 50)
+        noGardensLabel.Position = UDim2.new(0, 10, 0.5, -25)
+        noGardensLabel.BackgroundTransparency = 1
+        noGardensLabel.TextColor3 = Color3.new(1, 1, 1)
+        noGardensLabel.Font = Enum.Font.Nunito
+        noGardensLabel.TextSize = 24
+        noGardensLabel.Parent = mainFrame
+        return
+    end
+
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, -20, 1, -120)
+    scrollFrame.Position = UDim2.new(0, 10, 0, 70)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.ScrollBarThickness = 8
+    scrollFrame.Parent = mainFrame
+
+    local uiListLayout = Instance.new("UIListLayout", scrollFrame)
+    uiListLayout.Padding = UDim.new(0, 10)
+
+    for _, gardenInfo in ipairs(gardenOwners) do
+        local btn = createStyledButton(gardenInfo.displayName, UDim2.new(0, 0, 0, 0), scrollFrame)
+        btn.Size = UDim2.new(1, 0, 0, 60)
+        btn.TextSize = 20
+        btn.TextWrapped = true
+        btn.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
+
+        btn.MouseButton1Click:Connect(function()
+            if gardenInfo.signPart then
+                local character = LocalPlayer.Character
+                if character then
+                    local hrp = character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.CFrame = gardenInfo.signPart.CFrame + Vector3.new(0, 3, 0)
+                        if gardensUI then
+                            gardensUI:Destroy()
+                            gardensUI = nil
+                        end
+                    end
+                end
+            end
+        end)
+    end
+
+    uiListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, uiListLayout.AbsoluteContentSize.Y)
+    end)
+end
+
+gardensBtn.MouseButton1Click:Connect(function()
+    createGardensUI()
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    -- Не пересоздаем GUI, если он уже есть
+    wait(1)
+    if not PlayerGui:FindFirstChild("TeleportGui") then
+        screenGui:Clone().Parent = PlayerGui
+    end
+end)
