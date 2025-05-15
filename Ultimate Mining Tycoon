@@ -1,0 +1,114 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local TweenService = game:GetService("TweenService")
+
+local function createStyledButton(name, position, parent)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = UDim2.new(0, 244, 0, 74)
+    button.Position = position
+    button.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.Font = Enum.Font.Nunito
+    button.TextSize = 50
+    button.Text = name
+    button.Parent = parent
+
+    local UiCorner = Instance.new("UICorner", button)
+    UiCorner.CornerRadius = UDim.new(0, 8)
+
+    local UiStroke = Instance.new("UIStroke", button)
+    UiStroke.Color = Color3.fromRGB(255, 255, 255)
+    UiStroke.Thickness = 1.75
+    UiStroke.LineJoinMode = Enum.LineJoinMode.Round
+    UiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    -- Анимация при наведении (оптимизирована, чтобы не создавать много твинов)
+    local tweenInfo = TweenInfo.new(0.2)
+    local tweenEnter = TweenService:Create(button, tweenInfo, {BackgroundColor3 = Color3.fromRGB(50, 50, 50)})
+    local tweenLeave = TweenService:Create(button, tweenInfo, {BackgroundColor3 = Color3.fromRGB(34, 34, 34)})
+
+    button.MouseEnter:Connect(function()
+        tweenLeave:Cancel()
+        tweenEnter:Play()
+    end)
+
+    button.MouseLeave:Connect(function()
+        tweenEnter:Cancel()
+        tweenLeave:Play()
+    end)
+
+    return button
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TeleportGui"
+screenGui.Parent = PlayerGui
+screenGui.ResetOnSpawn = false
+
+local gearShopBtn = createStyledButton("Mine", UDim2.new(0.014, 0, 0.816, 0), screenGui)
+local eventStandBtn = createStyledButton("Upgrade", UDim2.new(0.014, 0, 0.69, 0), screenGui)
+local gardensBtn = createStyledButton("Home", UDim2.new(0.014, 0, 0.564, 0), screenGui)
+
+local function teleportToPosition(pos)
+    local character = LocalPlayer.Character
+    if character then
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = CFrame.new(pos)
+        end
+    end
+end
+
+gearShopBtn.MouseButton1Click:Connect(function()
+    teleportToPosition(Vector3.new(-1868.6881103515625, 2, -195))
+end)
+
+eventStandBtn.MouseButton1Click:Connect(function()
+    teleportToPosition(Vector3.new(-1572.854248046875, 6.500000476837158, -4.85280179977417))
+end)
+
+gardensBtn.MouseButton1Click:Connect(function()
+    teleportToPosition(Vector3.new(-140.9499969482422, 8.000001907348633, -239.5))
+end)
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local sprintMultiplier = 2.5
+local normalWalkSpeed = 16 -- стандартная скорость ходьбы в Roblox
+local sprinting = false
+
+local function setWalkSpeed(speed)
+    local character = LocalPlayer.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = speed
+        end
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.LeftShift then
+        sprinting = true
+        setWalkSpeed(normalWalkSpeed * sprintMultiplier)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.LeftShift then
+        sprinting = false
+        setWalkSpeed(normalWalkSpeed)
+    end
+end)
+
+-- Сброс скорости при спавне персонажа
+LocalPlayer.CharacterAdded:Connect(function(character)
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.WalkSpeed = normalWalkSpeed
+end)
